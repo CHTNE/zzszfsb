@@ -1,0 +1,30 @@
+name: Next.js Auto Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    env:
+      http_proxy: http://localhost:7890
+      https_proxy: http://localhost:7890
+
+    steps:
+      - name: Pull Latest Code
+        run: |
+          cd /home/chtne/zzszfsb
+          git pull origin main
+
+      - name: Install Node.js Dependencies
+        run: pnpm install
+        working-directory: /home/chtne/zzszfsb
+
+      - name: Build Vite Project
+        run: pnpm run build
+        working-directory: /home/chtne/zzszfsb
+
+      - name: Reload Next.js
+        run: pnpm start
+        working-directory: /home/chtne/zzszfsb
