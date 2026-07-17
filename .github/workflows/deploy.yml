@@ -26,5 +26,5 @@ jobs:
         working-directory: /home/chtne/zzszfsb
 
       - name: Reload Next.js
-        run: pnpm start
+        run: sudo systemctl restart zzszfsb
         working-directory: /home/chtne/zzszfsb
