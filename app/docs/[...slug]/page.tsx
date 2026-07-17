@@ -40,7 +40,7 @@ export default async function DocPage({ params }: DocPageProps) {
     <>
       <WikiLayout
         categories={tree.categories}
-        headerContent={<h1 className="text-lg font-semibold">枣庄三中封神榜</h1>}
+        headerContent={<h1 key="site-title" className="text-lg font-semibold">枣庄三中封神榜</h1>}
       >
         <div>
           <SearchDialog searchData={searchIndex} />

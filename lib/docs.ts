@@ -127,61 +127,65 @@ function sortFiles(files: DocFile[]): DocFile[] {
   });
 }
 
+/** 构建单个目录对应的分类节点（一个目录 = 一个分类） */
+function buildCategory(dirPath: string, docsDir: string, depth: number): DocCategory | null {
+  if (!fs.existsSync(dirPath)) return null;
+
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  const files: DocFile[] = [];
+  const children: DocCategory[] = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      const child = buildCategory(fullPath, docsDir, depth + 1);
+      if (child) children.push(child);
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      files.push(parseDocFile(fullPath, docsDir));
+    }
+  }
+
+  // 空目录不生成分类
+  if (files.length === 0 && children.length === 0) return null;
+
+  const relPath = path.relative(docsDir, dirPath).replace(/\\/g, "/");
+  return {
+    name: path.basename(dirPath),
+    path: relPath,
+    depth,
+    files: sortFiles(files),
+    children,
+    totalCount: files.length + children.reduce((sum, c) => sum + c.totalCount, 0),
+  };
+}
+
 /** 递归构建文档分类树 */
 function buildCategoryTree(dirPath: string, docsDir: string, depth = 0): DocCategory[] {
   if (!fs.existsSync(dirPath)) return [];
 
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
   const categories: DocCategory[] = [];
-  const files: DocFile[] = [];
+  const rootFiles: DocFile[] = [];
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
-
     if (entry.isDirectory()) {
-      // 递归处理子目录
-      const childCats = buildCategoryTree(fullPath, docsDir, depth + 1);
-      const childFiles: DocFile[] = [];
-      const subEntries = fs.readdirSync(fullPath, { withFileTypes: true });
-      for (const se of subEntries) {
-        if (se.isFile() && se.name.endsWith(".md")) {
-          childFiles.push(parseDocFile(path.join(fullPath, se.name), docsDir));
-        }
-      }
-      const relPath = path.relative(docsDir, fullPath).replace(/\\/g, "/");
-      categories.push({
-        name: entry.name,
-        path: relPath,
-        depth,
-        files: sortFiles(childFiles),
-        children: childCats,
-        totalCount: childFiles.length + childCats.reduce((sum, c) => sum + c.totalCount, 0),
-      });
+      const cat = buildCategory(fullPath, docsDir, depth + 1);
+      if (cat) categories.push(cat);
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
-      files.push(parseDocFile(fullPath, docsDir));
+      rootFiles.push(parseDocFile(fullPath, docsDir));
     }
   }
 
-  // 根目录下的文件归入"文档"虚拟分类
-  if (files.length > 0 && depth === 0) {
+  // 根目录下的散落文件归入"文档"虚拟分类
+  if (rootFiles.length > 0) {
     categories.unshift({
       name: "文档",
       path: "",
-      depth: 0,
-      files: sortFiles(files),
-      children: [],
-      totalCount: files.length,
-    });
-  } else if (files.length > 0) {
-    // 非根目录下的文件归入当前目录分类
-    const relPath = path.relative(docsDir, dirPath).replace(/\\/g, "/");
-    categories.unshift({
-      name: path.basename(dirPath),
-      path: relPath,
       depth,
-      files: sortFiles(files),
+      files: sortFiles(rootFiles),
       children: [],
-      totalCount: files.length,
+      totalCount: rootFiles.length,
     });
   }
 
